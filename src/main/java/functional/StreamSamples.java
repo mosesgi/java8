@@ -3,7 +3,9 @@ package functional;
 import pojo.Person;
 
 import java.util.*;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 //https://blog.csdn.net/fzy629442466/article/details/84629422
 public class StreamSamples {
@@ -67,13 +69,13 @@ public class StreamSamples {
         //groupingBy 分组后操作
         //Collectors中还提供了一些对分组后的元素进行downStream处理的方法：
         //counting方法返回所收集元素的总数；
+        Map<Integer, Long> sexCount = list.stream().collect(Collectors.groupingBy(Person::getSex, Collectors.counting()));
         //summing方法会对元素求和；
+        Map<Integer, Integer> ageCount = list.stream().collect(Collectors.groupingBy(Person::getSex, Collectors.summingInt(Person::getAge)));
         //maxBy和minBy会接受一个比较器，求最大值，最小值；
+        Map<Integer, Optional<Person>> ageMax =  list.stream().collect(Collectors.groupingBy(Person::getSex, Collectors.maxBy(Comparator.comparing(Person::getAge))));
         //mapping函数会应用到downstream结果上，并需要和其他函数配合使用；
-//        Map<Integer, Long> sexCount = userStream.collect(Collectors.groupingBy(User::getSex,Collectors.counting()));
-//        Map<Integer, Integer> ageCount = userStream.collect(Collectors.groupingBy(User::getSex,Collectors.summingInt(User::getAge)));
-//        Map<Integer, Optional<User>> ageMax =  userStream.collect(Collectors.groupingBy(User::getSex,Collectors.maxBy(Comparator.comparing(User::getAge))));
-//        Map<Integer, List<String>> nameMap =  userStream.collect(Collectors.groupingBy(User::getSex,Collectors.mapping(User::getName,Collectors.toList())));
+        Map<Integer, List<String>> nameMap =  list.stream().collect(Collectors.groupingBy(Person::getSex, Collectors.mapping(Person::getName,Collectors.toList())));
 
         //相同姓名为key，统计这些人的平均年龄 groupingBy + averagingInt
         Map<String, Double> avgAgeByName = list.stream().collect(Collectors.groupingBy(p -> p.getName(), Collectors.averagingInt(p -> p.getAge())));
@@ -82,10 +84,46 @@ public class StreamSamples {
         //根据年龄分成两组 partitioningBy
         Map<Boolean, List<Person>> age30Map = list.stream().collect(Collectors.partitioningBy(p -> p.getAge()<=30));
 
+        //奇偶分组统计数量
+        Map<Boolean, Long> partiCount = Stream.of(1,2,3,4).collect(Collectors.partitioningBy(it -> it%2==0, Collectors.counting()));
     }
 
-    //Collectors joining
-    //TODO
+    //Collectors joining Strings
+    public static void collectorJoin(){
+        List<Person> list = new ArrayList<>();
+        String names = list.stream().map(p -> p.getName()).collect(Collectors.joining(","));
+        String strJoin = Stream.of("1","2","3","4").collect(Collectors.joining(",","[","]"));
+        System.out.println("strJoin: " + strJoin);
+
+        String phrase = list.stream().filter(p -> p.getAge() >= 18).map(p -> p.getName()).collect(Collectors.joining(" and ", "In Germany ", " are of legal age."));
+        System.out.println(phrase);
+    }
+
+    public static void summaryStat(){
+        List<Person> list = new ArrayList<>();
+        DoubleSummaryStatistics dss = list.stream().collect(Collectors.summarizingDouble(p -> p.getAge()));
+        double average = dss.getAverage();
+        double max = dss.getMax();
+        double min = dss.getMin();
+        double sum = dss.getSum();
+        double count = dss.getCount();
+
+        IntSummaryStatistics ageSummary = list.stream().collect(Collectors.summarizingInt(p -> p.getAge()));
+        System.out.println(ageSummary);
+    }
+
+    //自定义Collector
+    public static void customizedCollector(){
+        List<Person> list = new ArrayList<>();
+        Collector<Person, StringJoiner, String> personNameCollector = Collector.of(
+                () -> new StringJoiner(" | "),          //supplier
+                (j, p) -> j.add(p.getName().toUpperCase()),       //accumulator
+                (j1, j2) -> j1.merge(j2),                         //combiner
+                StringJoiner::toString                            //finisher
+        );
+        String names = list.stream().collect(personNameCollector);
+        System.out.println(names);  // MAX | PETER | PAMELA | DAVID
+    }
 
     public static void main(String[] args) {
         StreamSamples.union();
